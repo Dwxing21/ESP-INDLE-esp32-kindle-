@@ -201,6 +201,12 @@ void setup() {
   TJpgDec.setSwapBytes(true);
   TJpgDec.setCallback(tft_output);
 
+  // Display splash screen if it exists on the SD card
+  if (SD.exists("/splash.jpg")) {
+    TJpgDec.drawSdJpg(0, 0, "/splash.jpg");
+    delay(2000);  // Display splash screen for 2 seconds
+  }
+
   loadSeriesList();
   drawMenu();
 
