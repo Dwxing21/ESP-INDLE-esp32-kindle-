@@ -45,6 +45,7 @@
 #include <unzipLIB.h>
 #include <vector>
 #include <algorithm>
+#include "splash_jpeg.h"
 
 // ---------------- PIN CONFIG ----------------
 // Shared SPI bus (TFT + SD)
@@ -188,7 +189,9 @@ void setup() {
   tft.setRotation(0); // portrait, best for manga pages
   tft.fillScreen(ILI9341_BLACK);
 
-  drawStatus("Starting...");
+  // Boot splash: show the flash-baked splash.jpeg immediately so the user
+  // sees feedback while SD init runs (the slowest part of boot).
+  drawSplashFromFlash();
 
   if (!SD.begin(SD_CS, spiBus)) {
     drawFatalError("SD card not found!\nCheck wiring/card.");
@@ -200,12 +203,6 @@ void setup() {
   TJpgDec.setJpgScale(1);
   TJpgDec.setSwapBytes(true);
   TJpgDec.setCallback(tft_output);
-
-  // Display splash screen if it exists on the SD card
-  if (SD.exists("/splash.jpg")) {
-    TJpgDec.drawSdJpg(0, 0, "/splash.jpg");
-    delay(2000);  // Display splash screen for 2 seconds
-  }
 
   loadSeriesList();
   drawMenu();
@@ -428,6 +425,20 @@ void drawStatus(const char *msg) {
   tft.setTextSize(2);
   tft.setCursor(10, 140);
   tft.println(msg);
+}
+
+// Draws the boot splash image baked into flash (splash_jpeg[] from
+// splash_jpeg.h). Renders centered on the 240x320 screen. If decoding
+// fails for any reason, falls back to a blank black screen so the rest
+// of setup() can still proceed.
+void drawSplashFromFlash() {
+  tft.fillScreen(ILI9341_BLACK);
+  // drawJpg() with a (const uint8_t *, size_t) overload decodes from a
+  // RAM/flash buffer via the existing tft_output callback.
+  uint16_t result = TJpgDec.drawJpg(splash_jpeg, SPLASH_JPEG_LEN);
+  if (result != TJpgDec.JPEG_OK) {
+    tft.fillScreen(ILI9341_BLACK);
+  }
 }
 
 void drawFatalError(const char *msg) {
